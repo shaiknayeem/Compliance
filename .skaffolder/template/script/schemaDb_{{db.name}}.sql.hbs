@@ -1,0 +1,88 @@
+**** PROPERTIES SKAFFOLDER ****
+{
+    "forEachObj": "db",
+    "overwrite": true,
+    "_partials": []
+}
+**** END PROPERTIES SKAFFOLDER ****
+--
+-- Database: `{{db.name}}`
+--
+
+CREATE DATABASE `{{db.name}}`;
+-- ENTITIES
+
+{{#each db._entity}}
+--
+-- Struttura della tabella `{{name}}`
+--
+
+    CREATE TABLE `{{../db.name}}`.`{{name}}` (	{{#each _attrs}}
+        {{#equal ../name 'User'}}{{#notEqual name 'roles'}}
+        `{{name}}` {{resolveSQLtype type}},
+        {{/notEqual}}{{/equal}}
+        {{#notEqual ../name 'User'}}
+        `{{name}}` {{resolveSQLtype type}},
+        {{/notEqual}}
+        {{/each}}
+        -- RELAZIONI{{#each _relations}}{{#equal _ent1.name ../name}}{{#equal type '1:m'}}
+        `{{name}}` DECIMAL(38, 0), {{/equal}}{{/equal}}{{/each}}
+        
+        `_id` DECIMAL(38,0)
+    );
+    
+    
+    CREATE UNIQUE INDEX `{{name}}_PK` ON `{{../db.name}}`.`{{name}}` (`_id`);
+    ALTER TABLE `{{../db.name}}`.`{{name}}` ADD CONSTRAINT `{{name}}_PK` PRIMARY KEY (`_id`);
+    ALTER TABLE `{{../db.name}}`.`{{name}}` MODIFY `_id` DECIMAL(38,0) NOT NULL;
+
+{{/each}}
+
+-- RELATIONS
+{{#each db._entity}}
+
+    -- RELATIONS TABLE {{name}}
+    
+        {{#each _relations}}{{#equal _ent1.name ../name}}{{#equal type '1:m'}}
+        -- foreign key {{name}}
+        ALTER TABLE `{{../../db.name}}`.`{{_ent1.name}}` ADD CONSTRAINT `{{_ent1.name}}_{{name}}` FOREIGN KEY (`{{name}}`)
+        	  REFERENCES `{{_ent2.name}}` (`_id`) ON DELETE SET NULL;
+        {{/equal}}{{/equal}}{{/each}}
+        
+        
+        {{#each _relations}}{{#equal _ent1.name ../name}}{{#equal type 'm:m'}}
+        -- relation m:m {{name}} {{_ent1.name}} - {{_ent2.name}}
+        CREATE TABLE `{{../../db.name}}`.`{{_ent1.name}}_{{name}}` (
+            `_id` DECIMAL(38,0),
+            `id_{{_ent1.name}}` DECIMAL(38, 0),	
+            `id_{{_ent2.name}}` DECIMAL(38, 0)
+        );
+        
+        
+        ALTER TABLE `{{../../db.name}}`.`{{_ent1.name}}_{{name}}` ADD CONSTRAINT `reference_{{_ent1.name}}_{{name}}` FOREIGN KEY (`id_{{_ent1.name}}`)
+        	  REFERENCES `{{_ent1.name}}` (`_id`) ON DELETE CASCADE;
+        	  
+        	  
+        ALTER TABLE `{{../../db.name}}`.`{{_ent1.name}}_{{name}}` ADD CONSTRAINT `reference_{{_ent2.name}}_{{name}}` FOREIGN KEY (`id_{{_ent2.name}}`)
+        	  REFERENCES {{_ent2.name}} (`_id`) ON DELETE CASCADE;
+        {{/equal}}{{/equal}}{{/each}}
+
+
+{{/each}}
+
+INSERT INTO user (`_id`, `username`, `password`, `mail`, `name`, `surname`) VALUES (1, 'admin', '1a1dc91c907325c69271ddf0c944bc72', '', '', '');
+
+CREATE TABLE `{{db.name}}`.`roles` (	
+    `role` VARCHAR(30), 
+    `_user` DECIMAL(38, 0), 
+    `_id` DECIMAL(38,0)
+);
+
+CREATE UNIQUE INDEX `ROLES_PK` ON `{{db.name}}`.`roles` (`_id`);
+ALTER TABLE `{{db.name}}`.`roles` ADD CONSTRAINT `ROLES_PK` PRIMARY KEY (`_id`);
+ALTER TABLE `{{db.name}}`.`roles` MODIFY `_id` DECIMAL(38,0) NOT NULL;
+ALTER TABLE `{{db.name}}`.`roles` ADD CONSTRAINT `ROLES_FK1` FOREIGN KEY (`_user`)
+	  REFERENCES `{{db.name}}`.`user` (`_id`);
+
+INSERT INTO roles (`role`, `_user`, `_id`) VALUES ('ADMIN', '1', 1);
+
